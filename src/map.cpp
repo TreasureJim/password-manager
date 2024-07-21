@@ -3,6 +3,11 @@
 #include <iostream>
 
 void map_print(const Map& map) {
+	if (map.empty()) {
+		std::cout << "No entries!\n" << std::endl;
+		return;
+	}
+
 	std::string last_key;
 	for(const auto& pair: map) {
 		if (last_key.compare(pair.first)) {

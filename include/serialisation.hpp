@@ -3,8 +3,10 @@
 
 #include "map.hpp"
 #include <fstream>
-#include <utility>
+#include <optional>
 
-std::pair<std::fstream, Map> read_map_file();
-void map_serialize(std::fstream& file, const Map& map);
-Map map_deserialize(std::fstream& f);
+std::optional<std::fstream> read_map_file();
+std::fstream open_map_file();
+
+std::vector<char> map_serialize(const Map &map);
+Map map_deserialize(const std::vector<char> &v);

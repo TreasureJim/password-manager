@@ -1,77 +1,48 @@
-#include "map.hpp"
-#include <fstream>
+#include <cstdio>
+#include <ios>
 #include <iostream>
-#include <iterator>
 #include <ostream>
-#include <string>
-#include <utility>
+#include <sodium.h>
+#include <vector>
 
+#include "cli.hpp"
+#include "encryption.hpp"
+#include "map.hpp"
 #include "serialisation.hpp"
 
-Map map;
-
-void add_login_menu() {
-  std::string name;
-  std::string username;
-  std::string password;
-
-  std::cout << "Add Login\n"
-               "Name: "
-            << std::flush;
-  std::cin >> name;
-
-  std::cout << "Username: " << std::flush;
-  std::cin >> username;
-  std::cout << "Password: " << std::flush;
-  std::cin >> password;
-
-  map.insert(std::make_pair(name, Login(username, password)));
-  std::cout << "Saved!\n" << std::endl;
-}
-
-void main_menu_input() {
-  while (true) {
-    std::cout << "1: Search\n"
-                 "2: Show all logins\n"
-                 "3: Add Login\n"
-                 "4: Save & Exit\n"
-                 "\nInput: "
-              << std::flush;
-
-    char option;
-    std::cin >> option;
-
-    switch (option) {
-    case '1':
-      break;
-
-    case '2':
-      map_print(map);
-      break;
-
-    case '3':
-      add_login_menu();
-      break;
-
-    case '4':
-      return;
-
-    default:
-      std::cout << "Invalid input. Try again." << std::endl;
-      continue;
-    }
-  }
-}
+Map g_map;
 
 int main(int argc, char *argv[]) {
+  if (sodium_init() < 0) {
+    std::cout << "ERROR: libsodium initialization failed." << std::endl;
+    return 1;
+  }
+
   std::cout << "Password Manager\n\n\n";
 
-  auto [map_file, output_map] = read_map_file();
-	map = output_map;
+  auto pass = login_menu();
 
-  main_menu_input();
+  {
+    auto map_file = read_map_file();
+    if (map_file.has_value()) {
+      auto decrypted_stream = decrypt_stream(map_file.value(), pass);
+      if (decrypted_stream.empty()) {
+        std::cerr << "ERROR: couldn't decrypt file." << std::endl;
+        return 1;
+      }
 
-  map_serialize(map_file, map);
+      g_map = map_deserialize(
+          reinterpret_cast<const std::vector<char> &>(decrypted_stream));
+    }
+  }
+
+  main_menu();
+
+  auto map_file = open_map_file();
+
+  auto vector_saving = map_serialize(g_map);
+  encrypt_stream(reinterpret_cast<std::vector<unsigned char> &>(vector_saving),
+                 map_file, pass);
 
   return 0;
 }
