@@ -8,30 +8,6 @@
 #include <string>
 #include <utility>
 
-std::pair<std::fstream, bool> find_map_file() {
-  static const char *path = "./map.bin";
-  bool exists = false;
-
-  {
-    FILE *f = fopen(path, "r");
-    exists = !(f == NULL);
-    if (exists)
-      fclose(f);
-  }
-
-  if (exists) {
-    return std::make_pair(std::fstream(path, std::fstream::in |
-                                                 std::fstream::out |
-                                                 std::fstream::binary),
-                          exists);
-  } else {
-    return std::make_pair(
-        std::fstream(path, std::fstream::in | std::fstream::out |
-                               std::fstream::binary | std::fstream::trunc),
-        exists);
-  }
-}
-
 void serialize_string(std::fstream &f, const std::string &s) {
   uint16_t size = s.length();
   f.write(reinterpret_cast<const char *>(&size), sizeof(size));
@@ -87,4 +63,24 @@ Map map_deserialize(std::fstream &f) {
   }
 
   return map;
+}
+
+std::pair<std::fstream, Map> read_map_file() {
+  static const char *path = "./map.bin";
+  bool exists = false;
+
+  {
+    FILE *f = fopen(path, "r");
+    exists = !(f == NULL);
+    if (exists)
+      fclose(f);
+  }
+
+  Map map;
+  if (exists) {
+    std::fstream f(path, std::fstream::in | std::fstream::binary);
+    map = map_deserialize(f);
+  }
+
+  return std::make_pair( std::fstream(path, std::fstream::out | std::fstream::binary | std::fstream::trunc), map);
 }
