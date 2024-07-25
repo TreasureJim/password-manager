@@ -1,43 +1,63 @@
+#include <cstring>
 #include <iostream>
 #include <ostream>
 #include <sodium.h>
-#include <sodium/crypto_box.h>
-#include <sodium/crypto_pwhash_argon2i.h>
 #include <string>
+#include <vector>
 
-#define KEY_LEN crypto_box_SEEDBYTES
+#define PASS 0
+#define FAIL 1
 
-#define PASSWORD "thisisapassword"
-#define CIPHERTEXT_LEN (crypto_secretbox_MACBYTES + sizeof(PASSWORD))
+#define KEY_LEN 128
 
 
-
-int main () {
+int main() {
   if (sodium_init() < 0) {
     std::cout << "ERROR: libsodium initialization failed." << std::endl;
-    return 1;
+    return FAIL;
   }
 
+  unsigned char PASSWORD_s[] = "thisisapassword";
+  std::vector<char> password(PASSWORD_s, PASSWORD_s + sizeof(PASSWORD_s));
+  unsigned char content_s[] = "this is content";
+  std::vector<char> content(content_s, content_s + sizeof(content_s));
 
-	unsigned char ciphertext[CIPHERTEXT_LEN];
-	{
-		std::string content = "this is content";
+  unsigned char key[KEY_LEN];
 
-		unsigned char salt[crypto_pwhash_SALTBYTES];
-		unsigned char key[KEY_LEN];
+  unsigned char nonce[crypto_secretbox_NONCEBYTES];
+  randombytes_buf(nonce, sizeof(nonce));
 
-		randombytes_buf(salt, sizeof salt);
+  int CIPHERTEXT_LEN = (crypto_secretbox_MACBYTES + content.size());
+  unsigned char ciphertext[CIPHERTEXT_LEN];
+  {
+    unsigned char salt[crypto_pwhash_SALTBYTES];
+    randombytes_buf(salt, sizeof(salt));
 
-		if (crypto_pwhash_argon2i(key, KEY_LEN, PASSWORD, sizeof(PASSWORD), salt, crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE, crypto_pwhash_ALG_DEFAULT)) {
-			std::cerr << "ERROR: could not generate secret key. Possibly not enough memory." << std::endl;
-			return 1;
-		}
+    if (crypto_pwhash_argon2id(
+            key, KEY_LEN, password.data(), password.size(), salt,
+            crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MIN,
+            crypto_pwhash_ALG_DEFAULT) != 0) {
+      std::cerr
+          << "ERROR: could not generate secret key. Possibly not enough memory."
+          << std::endl;
+      return FAIL;
+    }
 
-		unsigned char nonce[crypto_secretbox_NONCEBYTES];
-		randombytes_buf(nonce, sizeof nonce);
+    crypto_secretbox_easy(ciphertext, (unsigned char*)content.data(), content.size(), nonce, key);
+  }
 
-		crypto_secretbox_easy(ciphertext, reinterpret_cast<unsigned char*>(content.data()), content.length(), nonce, key);
-	}
-	
-	return 0;
+  {
+    unsigned char decrypted[content.size()];
+    if (crypto_secretbox_open_easy(decrypted, ciphertext, CIPHERTEXT_LEN, nonce, key) != 0) {
+      std::cerr << "ERROR: data not validated." << std::endl;
+      return FAIL;
+    }
+
+    std::cout << "OUTPUT: " << decrypted << std::endl;
+
+    if (strcmp((char *)decrypted, (char*)content.data()))
+      return FAIL;
+  }
+
+  return PASS;
 }
