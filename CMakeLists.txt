@@ -27,3 +27,13 @@ target_include_directories(PasswordManager PRIVATE include)
 target_link_libraries(PasswordManager PRIVATE 
 	sodium
 )
+
+### TESTS
+enable_testing()
+
+add_executable(encryption_test tests/encryption.cpp)
+target_link_libraries(encryption_test PRIVATE sodium)
+
+add_test(NAME encryption_test 
+	COMMAND $<TARGET_FILE:encryption_test>
+)
