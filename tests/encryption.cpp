@@ -30,7 +30,7 @@ int main() {
   auto ciphertext = encrypted_pair->first;
   auto nonce = encrypted_pair->second;
 
-  std::optional<std::vector<char>> decrypted = decryptor.decrypt(ciphertext, ciphertext.size(), nonce.data(), password);
+  std::optional<std::vector<char>> decrypted = decryptor.decrypt(ciphertext, nonce.data(), password);
   if (!decrypted.has_value()) return FAIL;
 
   if (strcmp(content_s, decrypted->data())) {

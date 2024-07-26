@@ -9,9 +9,12 @@ add_library(encryption encryption.cpp)
 target_link_libraries(encryption PRIVATE sodium)
 target_include_directories(encryption PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
+add_library(serialization serialization.cpp)
+target_link_libraries(serialization PRIVATE encryption)
+target_include_directories(serialization PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
 set(SOURCE_FILES
 	cli.cpp
-	serialization.cpp
 	login.cpp
 	map.cpp
 	main.cpp
@@ -20,4 +23,9 @@ set(SOURCE_FILES
 add_executable(PasswordManager ${SOURCE_FILES})
 
 target_include_directories(PasswordManager PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(PasswordManager PRIVATE encryption)
+target_link_libraries(PasswordManager PRIVATE serialization)
+
+set_target_properties( PasswordManager
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

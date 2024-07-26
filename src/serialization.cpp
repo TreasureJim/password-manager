@@ -1,5 +1,5 @@
+#include "serialisation.hpp"
 #include "encryption.hpp"
-#include "login.hpp"
 #include "map.hpp"
 
 #include <cstdint>
@@ -9,12 +9,10 @@
 #include <iostream>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 #include <array>
 
-static const char *path = "./map.bin";
-std::optional<std::fstream> read_map_file() {
+std::optional<std::fstream> read_map_file(std::string path = DEFAULT_PATH) {
   std::fstream f(path,
                  std::fstream::in | std::fstream::out | std::fstream::binary);
   if (!f.good()) {
@@ -24,7 +22,7 @@ std::optional<std::fstream> read_map_file() {
   return f;
 }
 
-std::fstream open_map_file() {
+std::fstream open_map_file(std::string path = DEFAULT_PATH) {
   return std::fstream(path, std::fstream::out | std::fstream::binary |
                                 std::fstream::trunc);
 }
@@ -78,70 +76,75 @@ std::string deserialize_string(std::vector<char>::const_iterator &iter,
 
 /// ------------------ ///
 
-class Serializer {
-private:
-  Decryptor decryptor;
+bool Serializer::map_serialize(const Map &map, const std::string &password) {
+  std::vector<char> vec;
 
-public:
-  bool error = this->decryptor.error;
+  uint16_t size = map.size();
+  vec.insert(vec.end(), reinterpret_cast<char *>(&size),
+             reinterpret_cast<char *>(&size) + sizeof(size));
 
-  bool map_serialize(const Map &map, const std::string& password) {
-    std::vector<char> vec;
-
-    uint16_t size = map.size();
-    vec.insert(vec.end(), reinterpret_cast<char *>(&size),
-               reinterpret_cast<char *>(&size) + sizeof(size));
-
-    for (auto &pair : map) {
-      serialize_string(vec, pair.first);
-      pair.second.serialize(vec);
-    }
-
-    // encryption and saving
-    auto encrypt_result = decryptor.encrypt(vec, password);
-    if (!encrypt_result.has_value()) return false;
-    auto [ciphertext, nonce] = encrypt_result.value();
-
-    auto file = open_map_file();
-    file.write((const char*)nonce.data(), NONCE_LEN);
-    file.write((const char*)ciphertext.data(), ciphertext.size());
-
-    return true;
+  for (auto &pair : map) {
+    serialize_string(vec, pair.first);
+    pair.second.serialize(vec);
   }
 
-  std::optional<Map> map_deserialize(const std::string &password) {
-    std::vector<char> ciphertext;
-    auto file = read_map_file();
-    if (!file.has_value()) return std::nullopt;
+  // encryption and saving
+  auto encrypt_result = decryptor.encrypt(vec, password);
+  if (!encrypt_result.has_value())
+    return false;
+  auto [ciphertext, nonce] = encrypt_result.value();
 
-    std::array<char, NONCE_LEN> nonce;
-    file->read(nonce.data(), nonce.size());
-    
-    char c;
-    while(file.value() >> c)
-      ciphertext.push_back(c);
+  auto file = open_map_file();
+  file.write((const char *)nonce.data(), NONCE_LEN);
+  file.write((const char *)ciphertext.data(), ciphertext.size());
 
-    auto decrypted_result = decryptor.decrypt(ciphertext, (unsigned char*)nonce.data(), password);
-    if (!decrypted_result.has_value()) return std::nullopt;
-    std::vector<char> v = decrypted_result.value();
+  return true;
+}
 
-    Map map;
+std::optional<Map> Serializer::map_deserialize(const std::string &password) {
+  Map map;
 
-    auto iter = v.begin();
-
-    uint16_t size;
-    if (!read_from_iterator(iter, v.end(), size)) {
-      std::cerr << "ERROR: Could not parse map file\n";
-      return map;
-    }
-
-    for (uint16_t i = 0; i < size; i++) {
-      std::string key = deserialize_string(iter, v.end());
-      Login l = Login::deserialize(iter, v.end());
-
-      map.insert(std::make_pair(key, l));
-    }
-
+  auto file = read_map_file();
+  if (!file.has_value())
+  {
+    std::cout << "No map.bin file found. Generating new save." << std::endl;
     return map;
   }
-};
+
+  std::array<char, NONCE_LEN> nonce;
+  if (!file->read(nonce.data(), nonce.size())) {
+    std::cerr << "ERROR: couldn't read nonce from file." << std::endl;
+    return std::nullopt;
+  }
+
+  file->seekg(0, std::ios::end);
+  int ciphertext_size = (int)file->tellg() - NONCE_LEN;
+  file->seekg(NONCE_LEN, std::ios::beg);
+
+  std::vector<char> ciphertext;
+  ciphertext.resize(ciphertext_size);
+  file->read(ciphertext.data(), ciphertext.size());
+
+  auto decrypted_result =
+      decryptor.decrypt(ciphertext, (unsigned char *)nonce.data(), password);
+  if (!decrypted_result.has_value())
+    return std::nullopt;
+  std::vector<char> v = decrypted_result.value();
+
+  std::vector<char>::const_iterator iter = v.begin();
+
+  uint16_t size;
+  if (!read_from_iterator(iter, v.end(), size)) {
+    std::cerr << "ERROR: Could not parse map file\n";
+    return std::nullopt;
+  }
+
+  for (uint16_t i = 0; i < size; i++) {
+    std::string key = deserialize_string(iter, v.end());
+    Login l = Login::deserialize(iter, v.end());
+
+    map.insert(std::make_pair(key, l));
+  }
+
+  return map;
+}
