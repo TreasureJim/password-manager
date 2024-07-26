@@ -26,9 +26,14 @@ int main() {
     auto des_res = serializer.map_deserialize(PASSWORD);
     if (!des_res.has_value()) return FAIL;
 
-    map_print(des_res.value());
+    auto new_map = des_res.value();
+    map_print(new_map);
+
 
     // add check for comparing original and deserialized version
+    auto value = new_map.find("test service");
+    if (value == new_map.end()) return FAIL;
+    if (!(value->second.username == "username" && value->second.password == "password")) return FAIL;
   }
 
   return PASS;
