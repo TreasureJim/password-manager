@@ -36,7 +36,7 @@ bool read_from_iterator(std::vector<char>::const_iterator &it,
   }
 
   // Copy data from iterator to the output variable
-  std::memcpy(&output, &(*it), length);
+  std::memcpy(output, &(*it), length);
   std::advance(it, length);
   return true;
 }
