@@ -50,7 +50,9 @@ std::optional<std::pair<std::vector<char>, std::array<unsigned char, NONCE_LEN>>
   return std::make_pair(ciphertext, nonce);
 }
 
-std::optional<std::vector<char>> Decryptor::decrypt(std::vector<char> ciphertext, int ciphertext_len, unsigned char nonce[NONCE_LEN], const std::string& password) {
+std::optional<std::vector<char>> Decryptor::decrypt(std::vector<char> ciphertext, unsigned char nonce[NONCE_LEN], const std::string& password) {
+  int ciphertext_len = ciphertext.size();
+
   if (!this->generate_key(password)) return std::nullopt;
 
   int decrypted_size = ciphertext_len - crypto_secretbox_MACBYTES;
