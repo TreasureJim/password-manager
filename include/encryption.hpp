@@ -1,13 +1,23 @@
 #pragma once
 
+#include <optional>
 #include <sodium.h>
-#include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
-std::vector<unsigned char> derive_key(const std::string& password);
-std::vector<unsigned char> encrypt_buffer(const std::vector<unsigned char>& input, const std::string& password);
-std::vector<unsigned char> decrypt_buffer(const std::vector<unsigned char>& input, const std::string& password);
+#define KEY_LEN 128
+#define NONCE_LEN crypto_secretbox_NONCEBYTES
 
-void encrypt_stream(std::vector<unsigned char> content, std::ostream& outStream, const std::string& password);
-std::vector<unsigned char> decrypt_stream(std::istream& inStream, const std::string& password);
+class Decryptor {
+private:
+  int generate_key(const std::string &password);
+
+public:
+  bool error = false;
+
+  unsigned char key[KEY_LEN];
+
+  Decryptor();
+  std::optional<std::pair<std::vector<char>, std::array<unsigned char, NONCE_LEN>>> encrypt(std::vector<char> &content, const std::string &password);
+  std::optional<std::vector<char>> decrypt(std::vector<char> ciphertext, int ciphertext_len, unsigned char nonce[NONCE_LEN], const std::string& password);
+};

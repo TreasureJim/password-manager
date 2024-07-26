@@ -1,8 +1,10 @@
 #include <cstdio>
+#include <fstream>
 #include <ios>
 #include <iostream>
 #include <ostream>
 #include <sodium.h>
+#include <string>
 #include <vector>
 
 #include "cli.hpp"
@@ -13,12 +15,7 @@
 Map g_map;
 
 int main(int argc, char *argv[]) {
-  if (sodium_init() < 0) {
-    std::cout << "ERROR: libsodium initialization failed." << std::endl;
-    return 1;
-  }
-
-  std::cout << "Password Manager\n\n\n";
+  /* std::cout << "Password Manager\n\n\n";
 
   auto pass = login_menu();
 
@@ -44,5 +41,5 @@ int main(int argc, char *argv[]) {
   encrypt_stream(reinterpret_cast<std::vector<unsigned char> &>(vector_saving),
                  map_file, pass);
 
-  return 0;
+  return 0; */
 }
