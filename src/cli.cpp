@@ -1,5 +1,6 @@
 #include "globals.hpp"
 #include "map.hpp"
+#include <climits>
 #include <cstdio>
 #include <iostream>
 #include <iterator>
@@ -7,12 +8,27 @@
 #include <string>
 #include <utility>
 
+void update_entry_str(std::string &s) {
+  std::string input;
+  std::getline(std::cin, input);
+
+  if (input.empty()) {
+    std::cin.ignore(INT_MAX, '\n');
+    return;
+  }
+
+  s = input;
+}
+
 void update_entry(Map::iterator iter, int length) {
   int entry_selected;
   while (true) {
     printf("Select entry (1-%d): ", length);
     std::cin >> entry_selected;
     if (std::cin.fail()) {
+      std::cin.clear();
+      std::cin.ignore(INT_MAX, '\n');
+
       std::cout << "Not a valid entry. Try again!" << std::endl;
       continue;
     } else if (entry_selected <= 0 || entry_selected > length) {
@@ -29,9 +45,9 @@ void update_entry(Map::iterator iter, int length) {
             << "Current password: " << entry.password << std::endl;
 
   std::cout << "Enter username (leave blank for unchanged): " << std::flush;
-  std::cin >> entry.username;
+  update_entry_str(entry.username);
   std::cout << "Enter password (leave blank for unchanged): " << std::flush;
-  std::cin >> entry.password;
+  update_entry_str(entry.password);
 
   std::cout << "Entry updated!\n" << std::endl;
 }
@@ -42,6 +58,9 @@ void remove_entry(Map::iterator iter, int length) {
     printf("Select entry (1-%d): ", length);
     std::cin >> entry_selected;
     if (std::cin.fail()) {
+      std::cin.clear();
+      std::cin.ignore(INT_MAX, '\n');
+
       std::cout << "Not a valid entry. Try again!" << std::endl;
       continue;
     } else if (entry_selected <= 0 || entry_selected > length) {
