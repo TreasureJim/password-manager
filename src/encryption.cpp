@@ -18,11 +18,8 @@ Decryptor::Decryptor() {
 };
 
 int Decryptor::generate_key(const std::string &password) {
-  unsigned char salt[crypto_pwhash_SALTBYTES];
-  randombytes_buf(salt, sizeof(salt));
-
   if (crypto_pwhash_argon2id(
-          this->key, KEY_LEN, password.data(), password.size(), salt,
+          this->key, KEY_LEN, password.data(), password.size(), this->salt,
           crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MIN,
           crypto_pwhash_ALG_DEFAULT) != 0) {
     std::cerr
@@ -47,7 +44,7 @@ std::optional<std::pair<std::vector<char>, std::array<unsigned char, NONCE_LEN>>
   randombytes_buf(nonce.data(), NONCE_LEN);
 
   crypto_secretbox_easy((unsigned char *)ciphertext.data(),
-                        (unsigned char *)content.data(), ciphertext_size, (unsigned char*)nonce.data(),
+                        (unsigned char *)content.data(), content.size(), (unsigned char*)nonce.data(),
                         this->key);
 
   return std::make_pair(ciphertext, nonce);
